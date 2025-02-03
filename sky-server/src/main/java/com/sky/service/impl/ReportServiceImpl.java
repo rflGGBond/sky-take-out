@@ -1,5 +1,8 @@
 package com.sky.service.impl;
 
+import com.sky.mapper.UserMapper;
+import com.sky.vo.UserReportVO;
+import io.swagger.models.auth.In;
 import org.apache.commons.lang3.StringUtils;
 import com.sky.entity.Orders;
 import com.sky.mapper.OrderMapper;
@@ -23,6 +26,8 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired
     private OrderMapper orderMapper;
+    @Autowired
+    private UserMapper userMapper;
 
     /**
      * 统计营业额
@@ -57,5 +62,46 @@ public class ReportServiceImpl implements ReportService {
                 .dateList(StringUtils.join(dateList,","))
                 .turnoverList(StringUtils.join(turnoverList,","))
                 .build();
+    }
+
+    @Override
+    public UserReportVO getUserStatistics(LocalDate begin, LocalDate end) {
+        List<LocalDate> dateList = new ArrayList<>();
+        dateList.add(begin);
+        while (!begin.equals(end)) {
+            begin = begin.plusDays(1);
+            dateList.add(begin);
+        }
+
+        List<Integer> newUserList = new ArrayList<>();
+        List<Integer> totalUserList = new ArrayList<>();
+
+        for (LocalDate date : dateList) {
+            //查询日期对应的用户新增数
+            LocalDateTime beginTime = LocalDateTime.of(date, LocalTime.MIN);
+            LocalDateTime endTime = LocalDateTime.of(date, LocalTime.MAX);
+            Integer newUser = getUserCount(beginTime, endTime);
+            Integer totalUser = getUserCount(null, endTime);
+            totalUserList.add(totalUser);
+            newUserList.add(newUser);
+        }
+        return UserReportVO.builder()
+                .dateList(StringUtils.join(dateList,","))
+                .newUserList(StringUtils.join(newUserList,","))
+                .totalUserList(StringUtils.join(totalUserList,","))
+                .build();
+    }
+
+    /**
+     * 根据时间条件统计用户数量
+     * @param beginTime
+     * @param endTime
+     * @return
+     */
+    private Integer getUserCount(LocalDateTime beginTime, LocalDateTime endTime) {
+        Map map = new HashMap();
+        map.put("begin",beginTime);
+        map.put("end",endTime);
+        return userMapper.countByMap(map);
     }
 }
